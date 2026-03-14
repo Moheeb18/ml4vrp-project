@@ -1,27 +1,47 @@
 from load_vrp import load_vrp
 from distance_matrix import compute_distance_matrix
 from routes_utilities import route_distance, capacity_check, split_routes
+import os
 
-coords, demand, capacity, depot = load_vrp("C:/Users/asus/ml4vrp-project/data/A-n32-k5")
+def run_all(data_folder):
 
-print("Depot:", depot)
-print("Capacity:", capacity)
+    for file in os.listdir(data_folder):
+        
+       # if file.endswith(".vrp"):
 
-print("First 5 coordinates:")
-print(coords[:5])
+            path = os.path.join(data_folder, file)
 
-print("First 5 demands:")
-print(demand[:5])
+            print("\n==========")
+            print("Instance:", file)
 
-dist = compute_distance_matrix(coords)
+            coords, demand, capacity, depot = load_vrp(path)
 
-print("Distance matrix shape:", dist.shape)
+            print("Depot:", depot)
+            print("Capacity:", capacity)
 
-route = [0,1,2,3,4,0]
+            print("First 5 coordinates:")
+            print(coords[:5])
 
-print("Route distance:", route_distance(route, dist))
+            print("First 5 demands:")
+            print(demand[:5])
 
-print("Capacity valid:", capacity_check(route, demand, capacity))
+            dist = compute_distance_matrix(coords)
+            print("Distance matrix shape:", dist.shape)
 
-print("Split routes example:")
-print(split_routes([1,2,3,4,5,6,7], demand, capacity))
+
+if __name__ == "__main__":
+    data_folder = "data"
+    run_all(data_folder)
+
+
+
+
+
+# route = [0,1,2,3,4,0]
+
+# print("Route distance:", route_distance(route, dist))
+
+# print("Capacity valid:", capacity_check(route, demand, capacity))
+
+# print("Split routes example:")
+# print(split_routes([1,2,3,4,5,6,7], demand, capacity))
