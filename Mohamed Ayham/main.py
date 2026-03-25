@@ -177,7 +177,7 @@ def solve_instance(file_path, rl_agent):
 
 if __name__ == "__main__":
 
-    target = sys.argv[1] if len(sys.argv) > 1 else "../data"
+    target = sys.argv[1] if len(sys.argv) > 1 else "data"
 
     # Shared RL agent — learns across all instances and runs
     shared_agent = RLParameterAgent()
