@@ -1,5 +1,3 @@
-from load_vrp import load_vrp
-from distance_matrix import compute_distance_matrix
 from Solver import solve_vrp
 from distance import total_distance
 from MultiStart import solve_vrp_multistart
@@ -8,6 +6,14 @@ from SavingsAlgo import savings_algorithm
 from SavingsRelocate import relocate
 from Swap import swap
 import os
+import sys
+parent = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent)
+import src.load_vrp
+from src.load_vrp import load_vrp
+import src.distance_matrix
+from src.distance_matrix import compute_distance_matrix
+
 
 
 def run_vrp_pipeline(coords, demands, capacity, distance_matrix):
