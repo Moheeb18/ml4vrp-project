@@ -21,7 +21,3 @@ The solution is tested on benchmark VRP datasets (Augerat instances).
 
 The approach achieves near-optimal solutions with small gaps from the optimal values across all datasets.
 
-## Authors
-
-- Your Name
-- Team Members
