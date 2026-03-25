@@ -1,6 +1,10 @@
 import numpy as np
-from routes_utilities import split_routes
-
+import sys
+import os
+parent = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent)
+import src.routes_utilities
+from src.routes_utilities import split_routes
 
 def create_chromosome(num_customers):
     """

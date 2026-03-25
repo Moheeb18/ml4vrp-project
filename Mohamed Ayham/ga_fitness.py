@@ -1,5 +1,12 @@
+import sys
+import os
+parent = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent)
+import src.routes_utilities
+from src.routes_utilities import route_distance
 from ga_representation import decode_chromosome
-from routes_utilities import route_distance
+
+#from routes_utilities import route_distance
 
 # Competition objective weight: penalise each extra vehicle heavily
 VEHICLE_PENALTY = 1000

@@ -3,13 +3,18 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import Counter
-
-from load_vrp import load_vrp
-from distance_matrix import compute_distance_matrix
 from ga_core import run_ga
 from rl_agent import RLParameterAgent, ACTIONS
-from routes_utilities import route_distance
 from ga_fitness import VEHICLE_PENALTY
+
+parent = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent)
+import src.load_vrp
+from src.load_vrp import load_vrp
+import src.distance_matrix
+from src.distance_matrix import compute_distance_matrix
+import src.routes_utilities
+from src.routes_utilities import route_distance
 
 # ---------------------------------------------------------------------------
 # CONFIG

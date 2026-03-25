@@ -1,4 +1,9 @@
-from routes_utilities import route_distance
+import sys
+import os
+parent = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent)
+import src.routes_utilities
+from src.routes_utilities import route_distance
 from ga_fitness import fitness_from_routes, VEHICLE_PENALTY
 
 
