@@ -45,6 +45,8 @@ def compute_total(routes, distance_matrix):
 if __name__ == "__main__":
     data_folder = "data"
 
+    print(os.listdir(data_folder))
+
     for file in os.listdir(data_folder):
         if file.endswith(".vrp"):
             path = os.path.join(data_folder, file)
