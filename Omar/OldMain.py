@@ -1,5 +1,6 @@
-from Solver import solve_vrp, improve_routes
+from Solver import solve_vrp
 from SavingsAlgo import savings_algorithm
+from ActualFinalOptimize import actual_final_optimize
 import os
 import sys
 
@@ -10,29 +11,18 @@ from src.load_vrp import load_vrp
 from src.distance_matrix import compute_distance_matrix
 
 
+def run_vrp_pipeline(coords, demands, capacity, distance_matrix):
+    routes = savings_algorithm(coords, demands, capacity, distance_matrix)
+    routes, total_dist = actual_final_optimize(routes, distance_matrix, demands, capacity)
+    return routes, total_dist
+
+
 def compute_total(routes, distance_matrix):
     total = 0
     for route in routes:
         for i in range(len(route) - 1):
             total += distance_matrix[route[i]][route[i + 1]]
     return total
-
-
-def run_vrp_pipeline(coords, demands, capacity, distance_matrix):
-    routes = savings_algorithm(coords, demands, capacity, distance_matrix)
-
-    routes = improve_routes(
-        routes,
-        demands,
-        capacity,
-        distance_matrix,
-        k=25,
-        lns_iterations=60,
-        remove_ratio=0.20
-    )
-
-    total_dist = compute_total(routes, distance_matrix)
-    return routes, total_dist
 
 
 if __name__ == "__main__":

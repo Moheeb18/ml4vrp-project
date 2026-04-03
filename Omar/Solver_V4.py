@@ -208,6 +208,136 @@ def swap_with_neighbor_lists(routes, demands, capacity, distance_matrix, neighbo
     return routes
 
 
+def or_opt(routes, demands, capacity, distance_matrix, max_segment_len=3):
+    improved = True
+
+    while improved:
+        improved = False
+        current_cost = total_distance(routes, distance_matrix)
+
+        for from_r in range(len(routes)):
+            route_from = routes[from_r]
+
+            if len(route_from) <= 3:
+                continue
+
+            for seg_len in range(1, max_segment_len + 1):
+                for start in range(1, len(route_from) - seg_len):
+                    end = start + seg_len
+                    segment = route_from[start:end]
+
+                    if 0 in segment:
+                        continue
+
+                    segment_demand = sum(demands[node] for node in segment)
+
+                    for to_r in range(len(routes)):
+                        for insert_pos in range(1, len(routes[to_r])):
+                            if from_r == to_r:
+                                if insert_pos >= start and insert_pos <= end:
+                                    continue
+
+                            new_routes = [r[:] for r in routes]
+
+                            new_segment = new_routes[from_r][start:end]
+                            del new_routes[from_r][start:end]
+
+                            if len(new_routes[from_r]) <= 2:
+                                if from_r == to_r:
+                                    continue
+
+                            if from_r == to_r:
+                                adjusted_pos = insert_pos
+                                if insert_pos > start:
+                                    adjusted_pos -= seg_len
+                                new_routes[to_r][adjusted_pos:adjusted_pos] = new_segment
+                            else:
+                                if route_demand(new_routes[to_r], demands) + segment_demand > capacity:
+                                    continue
+                                new_routes[to_r][insert_pos:insert_pos] = new_segment
+
+                            new_routes = [r for r in new_routes if len(r) > 2]
+
+                            new_cost = total_distance(new_routes, distance_matrix)
+
+                            if new_cost < current_cost:
+                                routes = new_routes
+                                improved = True
+                                break
+
+                        if improved:
+                            break
+                    if improved:
+                        break
+                if improved:
+                    break
+            if improved:
+                break
+
+    return routes
+
+
+def two_opt_star(routes, demands, capacity, distance_matrix):
+    improved = True
+
+    while improved:
+        improved = False
+        current_cost = total_distance(routes, distance_matrix)
+
+        for r1 in range(len(routes)):
+            for r2 in range(r1 + 1, len(routes)):
+                route1 = routes[r1]
+                route2 = routes[r2]
+
+                if len(route1) <= 2 or len(route2) <= 2:
+                    continue
+
+                for i in range(len(route1) - 1):
+                    for j in range(len(route2) - 1):
+                        if i == 0 and j == 0:
+                            continue
+                        if i == len(route1) - 2 and j == len(route2) - 2:
+                            continue
+
+                        prefix1 = route1[:i + 1]
+                        suffix1 = route1[i + 1:]
+                        prefix2 = route2[:j + 1]
+                        suffix2 = route2[j + 1:]
+
+                        cand1 = prefix1 + suffix2
+                        cand2 = prefix2 + suffix1
+
+                        if cand1[0] != 0 or cand1[-1] != 0 or cand2[0] != 0 or cand2[-1] != 0:
+                            continue
+
+                        demand1 = route_demand(cand1, demands)
+                        demand2 = route_demand(cand2, demands)
+
+                        if demand1 > capacity or demand2 > capacity:
+                            continue
+
+                        new_routes = [r[:] for r in routes]
+                        new_routes[r1] = cand1
+                        new_routes[r2] = cand2
+                        new_routes = [r for r in new_routes if len(r) > 2]
+
+                        new_cost = total_distance(new_routes, distance_matrix)
+
+                        if new_cost < current_cost:
+                            routes = new_routes
+                            improved = True
+                            break
+
+                    if improved:
+                        break
+                if improved:
+                    break
+            if improved:
+                break
+
+    return routes
+
+
 def optimize_routes_neighbor_lists(routes, demands, capacity, distance_matrix, k=20):
     neighbor_lists = build_neighbor_lists(distance_matrix, k)
 
@@ -218,9 +348,12 @@ def optimize_routes_neighbor_lists(routes, demands, capacity, distance_matrix, k
 
         routes = relocate_with_neighbor_lists(routes, demands, capacity, distance_matrix, neighbor_lists)
         routes = swap_with_neighbor_lists(routes, demands, capacity, distance_matrix, neighbor_lists)
+        routes = or_opt(routes, demands, capacity, distance_matrix, max_segment_len=3)
 
         for i in range(len(routes)):
             routes[i] = two_opt(routes[i], distance_matrix)
+
+        routes = two_opt_star(routes, demands, capacity, distance_matrix)
 
         new_cost = total_distance(routes, distance_matrix)
 
@@ -232,12 +365,10 @@ def optimize_routes_neighbor_lists(routes, demands, capacity, distance_matrix, k
 
 def destroy_solution(routes, distance_matrix, num_remove, mode="random"):
     customers = []
-    route_map = {}
 
-    for r_idx, route in enumerate(routes):
+    for route in routes:
         for node in route[1:-1]:
             customers.append(node)
-            route_map[node] = r_idx
 
     if not customers:
         return [r[:] for r in routes], []
@@ -284,24 +415,25 @@ def destroy_solution(routes, distance_matrix, num_remove, mode="random"):
             new_routes.append(new_route)
 
     return new_routes, removed_nodes
-    if not customers:
-        return [r[:] for r in routes], []
 
-    removed_nodes = random.sample(customers, min(num_remove, len(customers)))
-    removed_set = set(removed_nodes)
 
-    new_routes = []
-    for route in routes:
-        new_route = [0]
-        for node in route[1:-1]:
-            if node not in removed_set:
-                new_route.append(node)
-        new_route.append(0)
+def insertion_cost(route, pos, node, distance_matrix):
+    a = route[pos]
+    b = route[pos + 1]
+    return distance_matrix[a][node] + distance_matrix[node][b] - distance_matrix[a][b]
 
-        if len(new_route) > 2:
-            new_routes.append(new_route)
 
-    return new_routes, removed_nodes
+def best_insertion_position(route, node, distance_matrix):
+    best_pos = None
+    best_extra = float("inf")
+
+    for i in range(len(route) - 1):
+        extra = insertion_cost(route, i, node, distance_matrix)
+        if extra < best_extra:
+            best_extra = extra
+            best_pos = i + 1
+
+    return best_pos, best_extra
 
 
 def best_insertion(routes, node, demands, capacity, distance_matrix):
@@ -327,26 +459,58 @@ def best_insertion(routes, node, demands, capacity, distance_matrix):
 
     return routes
 
-    for r_idx, route in enumerate(routes):
-        if route_demand(route, demands) + demands[node] > capacity:
-            continue
 
-        for i in range(len(route) - 1):
-            a = route[i]
-            b = route[i + 1]
-            extra = distance_matrix[a][node] + distance_matrix[node][b] - distance_matrix[a][b]
+def regret_insertion_repair(routes, removed_nodes, demands, capacity, distance_matrix, regret_k=2):
+    repaired = [r[:] for r in routes]
+    remaining = removed_nodes[:]
 
-            if extra < best_extra:
-                best_extra = extra
-                best_r = r_idx
-                best_pos = i + 1
+    while remaining:
+        best_node = None
+        best_route_idx = None
+        best_pos = None
+        best_regret = -float("inf")
+        best_first_cost = float("inf")
 
-    if best_r is not None:
-        routes[best_r].insert(best_pos, node)
-    else:
-        routes.append([0, node, 0])
+        for node in remaining:
+            options = []
 
-    return routes
+            for r_idx, route in enumerate(repaired):
+                if route_demand(route, demands) + demands[node] > capacity:
+                    continue
+
+                pos, extra = best_insertion_position(route, node, distance_matrix)
+                options.append((extra, r_idx, pos))
+
+            if not options:
+                options = [(0, None, None)]
+            else:
+                options.sort(key=lambda x: x[0])
+
+            while len(options) < regret_k:
+                options.append(options[-1])
+
+            first_cost = options[0][0]
+            regret = sum(opt[0] for opt in options[1:regret_k]) - (regret_k - 1) * first_cost
+
+            if regret > best_regret or (regret == best_regret and first_cost < best_first_cost):
+                best_regret = regret
+                best_first_cost = first_cost
+                best_node = node
+                best_route_idx = options[0][1]
+                best_pos = options[0][2]
+
+        if best_node is None:
+            break
+
+        if best_route_idx is None:
+            repaired.append([0, best_node, 0])
+        else:
+            repaired[best_route_idx].insert(best_pos, best_node)
+
+        remaining.remove(best_node)
+
+    return repaired
+
 
 def repair_solution(routes, removed_nodes, demands, capacity, distance_matrix, method="regret"):
     if method == "greedy":
@@ -360,11 +524,6 @@ def repair_solution(routes, removed_nodes, demands, capacity, distance_matrix, m
         return repaired
 
     return regret_insertion_repair(routes, removed_nodes, demands, capacity, distance_matrix, regret_k=2)
-
-    for node in nodes:
-        repaired = best_insertion(repaired, node, demands, capacity, distance_matrix)
-
-    return repaired
 
 
 def lns(routes, demands, capacity, distance_matrix, iterations=50, remove_ratio=0.15, k=20):
@@ -448,80 +607,20 @@ def improve_routes(routes, demands, capacity, distance_matrix, k=25, lns_iterati
         routes[i] = two_opt(routes[i], distance_matrix)
 
     routes = optimize_routes_neighbor_lists(routes, demands, capacity, distance_matrix, k)
-    routes = lns(routes, demands, capacity, distance_matrix, iterations=lns_iterations, remove_ratio=remove_ratio, k=k)
+    routes = lns(
+        routes,
+        demands,
+        capacity,
+        distance_matrix,
+        iterations=lns_iterations,
+        remove_ratio=remove_ratio,
+        k=k
+    )
 
     return routes
 
-def solve_vrp_improved(coords, demands, capacity, distance_matrix, k=20, lns_iterations=30, remove_ratio=0.15):
+
+def solve_vrp_improved(coords, demands, capacity, distance_matrix, k=25, lns_iterations=60, remove_ratio=0.20):
     routes = solve_vrp(coords, demands, capacity, distance_matrix)
     routes = improve_routes(routes, demands, capacity, distance_matrix, k, lns_iterations, remove_ratio)
     return routes
-
-def insertion_cost(route, pos, node, distance_matrix):
-    a = route[pos]
-    b = route[pos + 1]
-    return distance_matrix[a][node] + distance_matrix[node][b] - distance_matrix[a][b]
-
-
-def best_insertion_position(route, node, distance_matrix):
-    best_pos = None
-    best_extra = float("inf")
-
-    for i in range(len(route) - 1):
-        extra = insertion_cost(route, i, node, distance_matrix)
-        if extra < best_extra:
-            best_extra = extra
-            best_pos = i + 1
-
-    return best_pos, best_extra
-
-def regret_insertion_repair(routes, removed_nodes, demands, capacity, distance_matrix, regret_k=2):
-    repaired = [r[:] for r in routes]
-    remaining = removed_nodes[:]
-
-    while remaining:
-        best_node = None
-        best_route_idx = None
-        best_pos = None
-        best_regret = -float("inf")
-        best_first_cost = float("inf")
-
-        for node in remaining:
-            options = []
-
-            for r_idx, route in enumerate(repaired):
-                if route_demand(route, demands) + demands[node] > capacity:
-                    continue
-
-                pos, extra = best_insertion_position(route, node, distance_matrix)
-                options.append((extra, r_idx, pos))
-
-            if not options:
-                options = [(0, None, None)]
-            else:
-                options.sort(key=lambda x: x[0])
-
-            while len(options) < regret_k:
-                options.append(options[-1])
-
-            first_cost = options[0][0]
-            regret = sum(opt[0] for opt in options[1:regret_k]) - (regret_k - 1) * first_cost
-
-            if regret > best_regret or (regret == best_regret and first_cost < best_first_cost):
-                best_regret = regret
-                best_first_cost = first_cost
-                best_node = node
-                best_route_idx = options[0][1]
-                best_pos = options[0][2]
-
-        if best_node is None:
-            break
-
-        if best_route_idx is None:
-            repaired.append([0, best_node, 0])
-        else:
-            repaired[best_route_idx].insert(best_pos, best_node)
-
-        remaining.remove(best_node)
-
-    return repaired
