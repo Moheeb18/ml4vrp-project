@@ -250,7 +250,6 @@ def two_opt_star(routes, demands, capacity, distance_matrix):
                         new_routes = [r[:] for r in routes]
                         new_routes[r1] = cand1
                         new_routes[r2] = cand2
-
                         new_routes = [r for r in new_routes if len(r) > 2]
 
                         new_cost = total_distance(new_routes, distance_matrix)
@@ -283,8 +282,6 @@ def optimize_routes_neighbor_lists(routes, demands, capacity, distance_matrix, k
 
         for i in range(len(routes)):
             routes[i] = two_opt(routes[i], distance_matrix)
-
-        routes = two_opt_star(routes, demands, capacity, distance_matrix)
 
         new_cost = total_distance(routes, distance_matrix)
 
@@ -538,7 +535,21 @@ def improve_routes(routes, demands, capacity, distance_matrix, k=25, lns_iterati
         routes[i] = two_opt(routes[i], distance_matrix)
 
     routes = optimize_routes_neighbor_lists(routes, demands, capacity, distance_matrix, k)
-    routes = lns(routes, demands, capacity, distance_matrix, iterations=lns_iterations, remove_ratio=remove_ratio, k=k)
+
+    routes = lns(
+        routes,
+        demands,
+        capacity,
+        distance_matrix,
+        iterations=lns_iterations,
+        remove_ratio=remove_ratio,
+        k=k
+    )
+
+    routes = two_opt_star(routes, demands, capacity, distance_matrix)
+
+    for i in range(len(routes)):
+        routes[i] = two_opt(routes[i], distance_matrix)
 
     return routes
 
