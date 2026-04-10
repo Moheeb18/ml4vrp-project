@@ -20,14 +20,6 @@ def route_demand(route, demands):
     return total
 
 
-def route_load(route, demands):
-    return sum(demands[node] for node in route if node != 0)
-
-
-def solution_score(routes, distance_matrix, penalty_per_vehicle=1000):
-    return total_distance(routes, distance_matrix) + penalty_per_vehicle * len(routes)
-
-
 def build_neighbor_lists(distance_matrix, k=20):
     n = len(distance_matrix)
     neighbor_lists = []
@@ -291,8 +283,6 @@ def optimize_routes_neighbor_lists(routes, demands, capacity, distance_matrix, k
         for i in range(len(routes)):
             routes[i] = two_opt(routes[i], distance_matrix)
 
-        routes = two_opt_star(routes, demands, capacity, distance_matrix)
-
         new_cost = total_distance(routes, distance_matrix)
 
         if new_cost < old_cost:
@@ -464,51 +454,6 @@ def repair_solution(routes, removed_nodes, demands, capacity, distance_matrix, m
     return regret_insertion_repair(routes, removed_nodes, demands, capacity, distance_matrix, regret_k=2)
 
 
-def merge_two_routes(route1, route2):
-    return route1[:-1] + route2[1:]
-
-
-def try_reduce_vehicles(routes, demands, capacity, distance_matrix):
-    best_routes = [r[:] for r in routes]
-    improved = True
-
-    while improved:
-        improved = False
-        current_score = solution_score(best_routes, distance_matrix)
-
-        for i in range(len(best_routes)):
-            for j in range(i + 1, len(best_routes)):
-                r1 = best_routes[i]
-                r2 = best_routes[j]
-
-                if route_load(r1, demands) + route_load(r2, demands) > capacity:
-                    continue
-
-                merged = merge_two_routes(r1, r2)
-                merged = two_opt(merged, distance_matrix)
-
-                if route_load(merged, demands) > capacity:
-                    continue
-
-                candidate_routes = [r[:] for idx, r in enumerate(best_routes) if idx not in (i, j)]
-                candidate_routes.append(merged)
-
-                for k in range(len(candidate_routes)):
-                    candidate_routes[k] = two_opt(candidate_routes[k], distance_matrix)
-
-                candidate_score = solution_score(candidate_routes, distance_matrix)
-
-                if candidate_score < current_score:
-                    best_routes = candidate_routes
-                    improved = True
-                    break
-
-            if improved:
-                break
-
-    return best_routes
-
-
 def lns(routes, demands, capacity, distance_matrix, iterations=50, remove_ratio=0.15, k=20):
     best_routes = [r[:] for r in routes]
     best_cost = total_distance(best_routes, distance_matrix)
@@ -601,9 +546,7 @@ def improve_routes(routes, demands, capacity, distance_matrix, k=25, lns_iterati
         k=k
     )
 
-    routes = try_reduce_vehicles(routes, demands, capacity, distance_matrix)
-
-    routes = optimize_routes_neighbor_lists(routes, demands, capacity, distance_matrix, k)
+    routes = two_opt_star(routes, demands, capacity, distance_matrix)
 
     for i in range(len(routes)):
         routes[i] = two_opt(routes[i], distance_matrix)

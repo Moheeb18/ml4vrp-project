@@ -2,13 +2,13 @@ from Solver_V6 import solve_vrp, improve_routes
 from SavingsAlgo import savings_algorithm
 import os
 import sys
+import time
 
 parent = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent)
 
 from src.load_vrp import load_vrp
 from src.distance_matrix import compute_distance_matrix
-
 
 def compute_total(routes, distance_matrix):
     total = 0
@@ -31,17 +31,17 @@ def run_vrp_pipeline(coords, demands, capacity, distance_matrix):
     n = len(distance_matrix)
 
     if n < 80:
+        k = 15
+        lns_iterations = 25
+        remove_ratio = 0.10
+    elif n < 200:
+        k = 20
+        lns_iterations = 35
+        remove_ratio = 0.15
+    else:
         k = 20
         lns_iterations = 40
         remove_ratio = 0.15
-    elif n < 200:
-        k = 25
-        lns_iterations = 60
-        remove_ratio = 0.20
-    else:
-        k = 30
-        lns_iterations = 80
-        remove_ratio = 0.25
 
     routes = improve_routes(
         routes,
@@ -64,33 +64,43 @@ if __name__ == "__main__":
 
     print("Resolved data path:", data_folder)
     print("Exists?", os.path.exists(data_folder))
-    print("file,nn_total,s_total,f_total,f_nv,f_score")
+    print("file,nn_total,s_total,f_total,f_nv,f_score,time_sec")
 
-    target_files = {
-        "X-n101-k25.vrp",
-        "X-n157-k13.vrp",
-        "X-n200-k36.vrp",
-        "X-n251-k28.vrp",
-        "X-n303-k21.vrp"
-    }
+    target_files = [
+    "A-n32-k5.vrp",        # small
+    "X-n157-k13.vrp",      # medium
+    "X-n251-k28.vrp"       # large
+]
 
-    for file in os.listdir(data_folder):
-        if file.endswith(".vrp") and file in target_files:
-            path = os.path.join(data_folder, file)
+    total_start = time.time()
 
-            coords, demands, capacity, depot = load_vrp(path)
-            distance_matrix = compute_distance_matrix(coords)
+    for file in target_files:
+        path = os.path.join(data_folder, file)
 
-            nn_routes = solve_vrp(coords, demands, capacity, distance_matrix)
-            nn_total = compute_total(nn_routes, distance_matrix)
+        if not os.path.exists(path):
+            print(f"{file},MISSING")
+            continue
 
-            s_routes = savings_algorithm(coords, demands, capacity, distance_matrix)
-            s_total = compute_total(s_routes, distance_matrix)
+        file_start = time.time()
 
-            f_routes, f_total = run_vrp_pipeline(
-                coords, demands, capacity, distance_matrix
-            )
+        coords, demands, capacity, depot = load_vrp(path)
+        distance_matrix = compute_distance_matrix(coords)
 
-            f_nv, _, f_score = compute_score(f_routes, distance_matrix)
+        nn_routes = solve_vrp(coords, demands, capacity, distance_matrix)
+        nn_total = compute_total(nn_routes, distance_matrix)
 
-            print(f"{file},{nn_total},{s_total},{f_total},{f_nv},{f_score}")
+        s_routes = savings_algorithm(coords, demands, capacity, distance_matrix)
+        s_total = compute_total(s_routes, distance_matrix)
+
+        f_routes, f_total = run_vrp_pipeline(
+            coords, demands, capacity, distance_matrix
+        )
+
+        f_nv, _, f_score = compute_score(f_routes, distance_matrix)
+
+        elapsed = time.time() - file_start
+
+        print(f"{file},{nn_total},{s_total},{f_total},{f_nv},{f_score},{elapsed:.2f}")
+
+    total_elapsed = time.time() - total_start
+    print(f"TOTAL_TIME,{total_elapsed:.2f}")
